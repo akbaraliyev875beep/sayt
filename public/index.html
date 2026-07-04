@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Tez Yordam — Shoshilinch tibbiy yordam chaqirish tizimi. Real vaqtda ambulans chaqiring." />
+    <title>🚑 Tez Yordam — EMS Tizimi</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         AUTH PAGE — Login / Register
+         ═══════════════════════════════════════════════════════════ -->
+    <div id="auth-page" class="auth-page">
+        <div class="auth-bg-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+
+        <div class="auth-container">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">🚑</div>
+                <h1 class="auth-title">Tez Yordam</h1>
+                <p class="auth-subtitle">Shoshilinch tibbiy yordam tizimi</p>
+            </div>
+
+            <div class="auth-card">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" data-auth-tab="login" onclick="switchAuthTab('login')" id="auth-login-tab">
+                        Kirish
+                    </button>
+                    <button class="auth-tab" data-auth-tab="register" onclick="switchAuthTab('register')" id="auth-register-tab">
+                        Ro'yxatdan o'tish
+                    </button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="login-phone">📱 Telefon raqam</label>
+                        <input type="tel" id="login-phone" placeholder="+998 90 123 45 67" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">🔒 Parol</label>
+                        <input type="password" id="login-password" placeholder="Parolingiz" required />
+                    </div>
+                    <div id="login-error" class="form-error"></div>
+                    <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
+                        Kirish
+                    </button>
+                </form>
+
+                <!-- Register Form -->
+                <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label for="reg-name">👤 Ism va familiya <span class="required">*</span></label>
+                        <input type="text" id="reg-name" placeholder="To'liq ismingiz" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-phone">📱 Telefon raqam <span class="required">*</span></label>
+                        <input type="tel" id="reg-phone" placeholder="+998 90 123 45 67" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">🔒 Parol <span class="required">*</span></label>
+                        <input type="password" id="reg-password" placeholder="Kamida 4 ta belgi" required minlength="4" />
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-address">🏠 Manzil <span class="optional">(ixtiyoriy)</span></label>
+                        <input type="text" id="reg-address" placeholder="Yashash manzilingiz" />
+                    </div>
+                    <div id="register-error" class="form-error"></div>
+                    <button type="submit" class="btn btn-primary btn-full btn-lg" id="register-btn">
+                        Ro'yxatdan o'tish
+                    </button>
+                </form>
+            </div>
+
+            <p class="auth-footer">© 2026 Tez Yordam. Barcha huquqlar himoyalangan.</p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         MAIN APP (hidden until login)
+         ═══════════════════════════════════════════════════════════ -->
+    <div id="app" class="app hidden">
+
+        <!-- Header -->
+        <header class="header" id="main-header">
+            <div class="logo-section">
+                <h1 class="logo">🚑 Tez Yordam</h1>
+                <span class="logo-subtitle">EMS Dispatch System</span>
+            </div>
+            <div class="header-right">
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="active-drivers-count">0</span>
+                        <span class="stat-label">Faol</span>
+                    </div>
+                    <div class="stat-item stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="free-drivers-count">0</span>
+                        <span class="stat-label">Bo'sh</span>
+                    </div>
+                    <div class="stat-item stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="clock">--:--:--</span>
+                        <span class="stat-label">Vaqt</span>
+                    </div>
+                </div>
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">A</div>
+                    <span class="user-name" id="user-name-display">Foydalanuvchi</span>
+                    <button class="btn btn-outline btn-sm" onclick="logout()" id="logout-btn">Chiqish</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Map -->
+        <div id="map"></div>
+
+        <!-- Side Panel -->
+        <aside class="side-panel" id="side-panel">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="patient" onclick="switchTab('patient')" id="patient-tab-btn">
+                    <span class="tab-icon">🏥</span> Bemor
+                </button>
+                <button class="tab-btn" data-tab="driver" onclick="switchTab('driver')" id="driver-tab-btn">
+                    <span class="tab-icon">🚑</span> Haydovchi
+                </button>
+            </div>
+
+            <!-- ─── Patient Panel ─── -->
+            <div class="panel-content active" id="patient-panel">
+                <div class="panel-header">
+                    <h2>Shoshilinch yordam</h2>
+                    <p>Tez tibbiy yordam kerak bo'lsa, quyidagi tugmani bosing. Tizim sizga eng yaqin bo'sh ambulansni topib beradi.</p>
+                </div>
+
+                <div class="emergency-btn-wrapper">
+                    <button class="emergency-btn" id="emergency-btn" onclick="openSosModal()">
+                        <span class="btn-icon">🆘</span>
+                        <span class="btn-text">TEZ YORDAM</span>
+                        <span class="btn-sub">Bosing</span>
+                    </button>
+                </div>
+
+                <div class="status-bar">
+                    <span class="status-label">Holat:</span>
+                    <span class="status-text" id="patient-status">Kutilmoqda</span>
+                </div>
+
+                <div class="info-card">
+                    <h3><span class="card-icon">📍</span> Bemor joylashuvi</h3>
+                    <div class="info-row">
+                        <span>Kenglik:</span>
+                        <span id="patient-lat">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Uzunlik:</span>
+                        <span id="patient-lng">—</span>
+                    </div>
+                </div>
+
+                <div id="response-info" class="info-card success-card" style="display: none;">
+                    <h3><span class="card-icon">🚑</span> Tayinlangan ambulans</h3>
+                    <div class="info-row">
+                        <span>Haydovchi ID:</span>
+                        <span id="resp-driver-id">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Masofa:</span>
+                        <span id="resp-distance">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Taxminiy vaqt:</span>
+                        <span id="resp-eta">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── Driver Panel ─── -->
+            <div class="panel-content" id="driver-panel">
+                <div class="panel-header">
+                    <h2>Haydovchi paneli</h2>
+                    <p>Ambulans haydovchisi sifatida tizimga ulanish va chaqiruvlarni qabul qilish.</p>
+                </div>
+
+                <div class="status-bar">
+                    <span class="status-label">Holat:</span>
+                    <span class="status-badge" id="driver-status">Nofaol</span>
+                </div>
+
+                <div class="info-card">
+                    <h3><span class="card-icon">📋</span> Haydovchi ma'lumotlari</h3>
+                    <div class="info-row">
+                        <span>ID:</span>
+                        <span id="driver-id-display">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Kenglik:</span>
+                        <span id="driver-lat">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Uzunlik:</span>
+                        <span id="driver-lng">—</span>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="start-driver-btn" onclick="startDriver()">
+                        ▶ Ishni boshlash
+                    </button>
+                    <button class="btn btn-danger" id="stop-driver-btn" onclick="stopDriver()" disabled>
+                        ⏹ To'xtatish
+                    </button>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <button class="btn btn-outline btn-full" id="add-bots-btn" onclick="addBotDrivers()">
+                    🤖 3 ta bot haydovchi qo'shish
+                </button>
+                <p class="hint-text">Haversine algoritmini test qilish uchun</p>
+
+                <div id="task-info" class="info-card emergency-card" style="display: none;">
+                    <h3><span class="card-icon blink">🆘</span> Yangi chaqiruv!</h3>
+                    <div class="info-row">
+                        <span>Chaqiruvchi:</span>
+                        <span id="task-caller-name">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Telefon:</span>
+                        <span id="task-caller-phone">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Shikoyat:</span>
+                        <span id="task-illness">—</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Kim uchun:</span>
+                        <span id="task-for-whom">—</span>
+                    </div>
+                    <div id="task-other-info" style="display:none;">
+                        <div class="info-row">
+                            <span>Bemor ismi:</span>
+                            <span id="task-other-name">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Bemor tel:</span>
+                            <span id="task-other-phone">—</span>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <span>Masofa:</span>
+                        <span id="task-distance">—</span>
+                    </div>
+                    <button class="btn btn-success btn-full" id="accept-task-btn" onclick="acceptTask()">
+                        ✅ Qabul qilish
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ═══════════════ SOS MODAL ═══════════════ -->
+        <div id="sos-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h2><span class="blink">🆘</span> Shoshilinch chaqiruv</h2>
+                    <button class="modal-close" onclick="closeSosModal()" id="sos-close-btn">&times;</button>
+                </div>
+
+                <form id="sos-form" onsubmit="submitEmergency(event)">
+                    <!-- Kasallik -->
+                    <div class="form-group">
+                        <label for="sos-illness">🩺 Kasallik / Shikoyat <span class="required">*</span></label>
+                        <textarea id="sos-illness" placeholder="Nimadan shikoyat qilyapsiz yoki nima sodir bo'ldi..." required rows="3"></textarea>
+                    </div>
+
+                    <!-- Kim uchun -->
+                    <div class="form-group">
+                        <label>👤 Kim uchun chaqiryapsiz?</label>
+                        <div class="radio-group">
+                            <label class="radio-card" id="radio-self">
+                                <input type="radio" name="for-whom" value="self" checked onchange="toggleOtherPerson()" />
+                                <span class="radio-content">
+                                    <span class="radio-icon">🙋</span>
+                                    <span class="radio-label">O'zim uchun</span>
+                                </span>
+                            </label>
+                            <label class="radio-card" id="radio-other">
+                                <input type="radio" name="for-whom" value="other" onchange="toggleOtherPerson()" />
+                                <span class="radio-content">
+                                    <span class="radio-icon">👥</span>
+                                    <span class="radio-label">Boshqa odam</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Boshqa odam ma'lumotlari -->
+                    <div id="other-person-fields" class="other-fields hidden">
+                        <div class="other-fields-header">
+                            <span>Bemor haqida ma'lumot</span>
+                            <span class="optional">(ixtiyoriy — tanimasangiz bo'sh qoldiring)</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="other-name">Bemor ismi</label>
+                            <input type="text" id="other-name" placeholder="Bemorning ismi" />
+                        </div>
+                        <div class="form-group">
+                            <label for="other-phone">Bemor telefoni</label>
+                            <input type="tel" id="other-phone" placeholder="+998 XX XXX XX XX" />
+                        </div>
+                    </div>
+
+                    <!-- Joylashuv -->
+                    <div class="form-group">
+                        <label>📍 Joylashuv</label>
+                        <div class="location-box">
+                            <div class="location-icon">📌</div>
+                            <div class="location-info">
+                                <span class="location-main" id="sos-location-text">Toshkent shahri (taxminiy)</span>
+                                <span class="location-coords" id="sos-location-coords">Koordinatalar avtomatik aniqlanadi</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeSosModal()">Bekor qilish</button>
+                        <button type="submit" class="btn btn-danger btn-lg" id="sos-submit-btn">
+                            🆘 Chaqiruvni yuborish
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div id="notifications" class="notifications"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

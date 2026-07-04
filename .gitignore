@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.*
+.DS_Store
+desktop.ini
+fly.log
+*.log
+.vscode/
+.idea/
+logs/
